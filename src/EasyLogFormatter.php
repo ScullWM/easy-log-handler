@@ -16,6 +16,12 @@ class EasyLogFormatter implements FormatterInterface
     private $maxLineLength = 100;
     private $prefixLength = 2;
 
+    const IS_WEB_DEBUG_TOOLBAR_LOG = true;
+    const IS_NOT_WEB_DEBUG_TOOLBAR_LOG = false;
+
+    const DO_PREFIX_ALL_lINE = true;
+    const DONT_PREFIX_ALL_lINE = false;
+
     public function format(array $record)
     {
         throw new \RuntimeException('The method "format()" should never be called (call "formatBatch()" instead).  Please read EasyLogHandler README instructions to learn how to configure and use it.');
@@ -111,19 +117,18 @@ class EasyLogFormatter implements FormatterInterface
     {
         foreach ($records as $record) {
             if (isset($record['context']['route']) && '_wdt' === $record['context']['route']) {
-                return true;
+                return self::IS_WEB_DEBUG_TOOLBAR_LOG;
             }
         }
 
-        return false;
+        return self::IS_NOT_WEB_DEBUG_TOOLBAR_LOG;
     }
 
     private function processDeprecationLogRecord($record)
     {
         $context = $record['context'];
 
-        unset($context['type']);
-        unset($context['level']);
+        unset($context['type'], $context['level']);
 
         $record['context'] = $context;
 
@@ -268,17 +273,13 @@ class EasyLogFormatter implements FormatterInterface
 
         $contextAsString = Yaml::dump($context, $this->getInlineLevel($record), $this->prefixLength);
         $contextAsString = $this->formatTextBlock($contextAsString, '--> ');
-        $contextAsString = rtrim($contextAsString, PHP_EOL);
-
-        return $contextAsString;
+        return rtrim($contextAsString, PHP_EOL);
     }
 
     private function formatExtra(array $record)
     {
         $extraAsString = Yaml::dump(array('extra' => $record['extra']), 1, $this->prefixLength);
-        $extraAsString = $this->formatTextBlock($extraAsString, '--> ');
-
-        return $extraAsString;
+        return $this->formatTextBlock($extraAsString, '--> ');
     }
 
     private function formatLogInfo($record)
@@ -307,9 +308,7 @@ class EasyLogFormatter implements FormatterInterface
     private function formatMessage($record)
     {
         $message = $this->processStringPlaceholders($record['message'], $record['context']);
-        $message = $this->formatStringAsTextBlock($message);
-
-        return $message;
+        return $this->formatStringAsTextBlock($message);
     }
 
     private function formatRecord(array $records, $currentRecordIndex)
@@ -370,9 +369,7 @@ class EasyLogFormatter implements FormatterInterface
             }
         }
 
-        $traceAsString = $this->formatTextBlock($traceAsString, $prefix, true);
-
-        return $traceAsString;
+        return $this->formatTextBlock($traceAsString, $prefix, self::DO_PREFIX_ALL_lINE);
     }
 
     private function formatLogBatchHeader(array $records)
@@ -402,16 +399,12 @@ class EasyLogFormatter implements FormatterInterface
 
     private function formatAsSubtitle($text)
     {
-        $subtitle = str_pad('###  '.$text.'  ', $this->maxLineLength, '#', STR_PAD_BOTH);
-
-        return $subtitle.PHP_EOL;
+        return str_pad('###  '.$text.'  ', $this->maxLineLength, '#', STR_PAD_BOTH).PHP_EOL;
     }
 
     private function formatAsSection($text)
     {
-        $section = str_pad(str_repeat('_', 3).' '.$text.' ', $this->maxLineLength, '_', STR_PAD_RIGHT);
-
-        return $section.PHP_EOL;
+        return str_pad(str_repeat('_', 3).' '.$text.' ', $this->maxLineLength, '_', STR_PAD_RIGHT).PHP_EOL;
     }
 
     private function formatStringAsTextBlock($string)
@@ -430,9 +423,7 @@ class EasyLogFormatter implements FormatterInterface
         $string = implode(PHP_EOL, $stringLines);
 
         // needed to remove the unnecessary prefix added to the first line
-        $string = trim($string);
-
-        return $string;
+        return trim($string);
     }
 
     /**
@@ -444,7 +435,7 @@ class EasyLogFormatter implements FormatterInterface
      *
      * @return string
      */
-    private function formatTextBlock($text, $prefix = '', $prefixAllLines = false)
+    private function formatTextBlock($text, $prefix = '', $prefixAllLines = self::DONT_PREFIX_ALL_lINE)
     {
         if (empty($text)) {
             return $text;
